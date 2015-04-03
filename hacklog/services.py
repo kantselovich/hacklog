@@ -2,7 +2,7 @@ from accessdata import *
 from datetime import datetime
 import smtplib
 from entities import *
-import server
+#import server
 
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText

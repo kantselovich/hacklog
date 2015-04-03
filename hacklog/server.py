@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 import sys
 import time
 import thread
@@ -8,6 +9,7 @@ import logging
 
 from twisted.internet.protocol import DatagramProtocol
 from twisted.internet import reactor, defer
+from twisted.application import service, internet
 
 from optparse import OptionParser
 from ConfigParser import ConfigParser
@@ -29,7 +31,7 @@ class SyslogServer():
       self.config_file = '../conf/server.conf'
       self.loglevel = logging.DEBUG
       self.running = True
-      self.usage = "usage: %prog -c config_file"
+      self.usage = "usage: %prog -c config_file   sssss"
       self.testEnabled = False
       self.emailTest = False
       self.successPattern = None
@@ -93,19 +95,20 @@ class SyslogServer():
       threadPool.stop()
 
     def run(self):
-      signal.signal(signal.SIGINT, self.interrupt)
-      reactor.callInThread(self.messageParcer)
       reactor.listenUDP(self.port, SyslogReader())
       reactor.run()
 
+    def init(self):
+      signal.signal(signal.SIGINT, self.interrupt)
+      reactor.callInThread(self.messageParcer)
+
     def start(self):
-      self.readCmdArgs()
+      #self.readCmdArgs()
       self.parceConfig(self.config_file)
       self.setLogging()
       algorithm.setServices(MailConf(self.emailTest))
       create_db_engine(self)
       create_tables()
-      self.run() 
 
     def stop(self):
       reactor.stop()
@@ -117,10 +120,23 @@ class SyslogReader(DatagramProtocol):
         syslogMsg = SyslogMsg(data, host, port)
         queue.put(syslogMsg)
 
-def main():
+def getApplicationService():
+    return internet.UDPServer(server.port, SyslogReader())
 
-    server = SyslogServer()
-    server.start()
+def main():
+    server.run()
+
+# default context
+print "default contx"
+server = SyslogServer()
+server.start()
+server.init()
 
 if __name__ == '__main__':
+    print __name__
     main()
+else:
+    print __name__
+    application = service.Application("hacklog")
+    service = getApplicationService()
+    service.setServiceParent(application)
