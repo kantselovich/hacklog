@@ -24,19 +24,21 @@ class SyslogServer():
     """
     Syslog server based on twisted library
     """
-    def __init__(self):
+    def __init__(self, config_file='../conf/server.conf'):
       self.dbFile = 'hacklog.db'
       self.port = 10514
       self.bind_address = '127.0.0.1'
-      self.config_file = '../conf/server.conf'
+      self.config_file = config_file
       self.loglevel = logging.DEBUG
       self.running = True
-      self.usage = "usage: %prog -c config_file   sssss"
+      self.started = False
+      self.parser_thread = False
+      self.usage = "usage: %prog -c config_file"
       self.testEnabled = False
       self.emailTest = False
       self.successPattern = None
       self.failurePattern = None
-     
+
     def parceConfig(self, config_file):
        config = ConfigParser()
        config.read(config_file)
@@ -75,40 +77,43 @@ class SyslogServer():
       self.stop()
  
     def messageParcer(self):
-       logging.debug("messageParcer in thread " + str(thread.get_ident()))
+       self.parser_thread = thread.get_ident()
+       # output will be logged when app works under twistd plugin 
+       print("messageParcer in thread " + str(self.parser_thread))
+       logging.info("messageParcer in thread " + str(self.parser_thread))
+
        parser = None
        # get parsing patterns from config file when in testing mode
        if self.testEnabled:
          parser = Parser(self.successPattern, self.failurePattern, self.testEnabled)
        else:
          parser = Parser()
-
+      
        while self.running:
             msg = queue.get()
             eventLog = parser.parseLogLine(msg)
             if eventLog:
                 algorithm.processEventLog(eventLog)
                 logging.debug("messages in queue " + str(queue.qsize()) + ", received %r from %s:%d" % (msg.data, msg.host, msg.port))
- 
-    def cleanupThread(self):
-      threadPool = reactor.getThreadPool()
-      threadPool.stop()
 
     def run(self):
       reactor.listenUDP(self.port, SyslogReader())
       reactor.run()
 
     def init(self):
-      signal.signal(signal.SIGINT, self.interrupt)
-      reactor.callInThread(self.messageParcer)
+      if not self.parser_thread:
+        print('Staring parser thread')
+        signal.signal(signal.SIGINT, self.interrupt)
+        reactor.callInThread(self.messageParcer)
 
     def start(self):
-      #self.readCmdArgs()
-      self.parceConfig(self.config_file)
-      self.setLogging()
-      algorithm.setServices(MailConf(self.emailTest))
-      create_db_engine(self)
-      create_tables()
+      while not self.started:
+        self.parceConfig(self.config_file)
+        self.setLogging()
+        algorithm.setServices(MailConf(self.emailTest))
+        create_db_engine(self)
+        create_tables()
+	self.started = True
 
     def stop(self):
       reactor.stop()
@@ -124,19 +129,19 @@ def getApplicationService():
     return internet.UDPServer(server.port, SyslogReader())
 
 def main():
+    server.readCmdArgs()
+    server.start()
+    server.init()
     server.run()
 
 # default context
-print "default contx"
 server = SyslogServer()
-server.start()
-server.init()
 
 if __name__ == '__main__':
-    print __name__
     main()
 else:
-    print __name__
+    logging.info('starting as twisted plugin or application: {0}'.format(__name__))
+
     application = service.Application("hacklog")
     service = getApplicationService()
     service.setServiceParent(application)

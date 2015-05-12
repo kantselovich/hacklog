@@ -88,6 +88,7 @@ mkdir -p $RPM_BUILD_ROOT%{_initrddir}
 install -p -m 0640 conf/server.conf $RPM_BUILD_ROOT%{_sysconfdir}/%{name}/server.conf
 install -p -m 0755 bin/%{name} $RPM_BUILD_ROOT%{_bindir}/%{name}
 install -p -m 0755 scripts/%{name}.init.d $RPM_BUILD_ROOT%{_initrddir}/%{name}
+install -p -m 0755 twisted/plugins/%{name}_plugin.py $RPM_BUILD_ROOT%{python_sitelib}/twisted/plugins/%{name}_plugin.py
 
 %if ((0%{?rhel} >= 6 || 0%{?fedora} > 12) && 0%{?include_tests})
 %check
@@ -105,6 +106,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/LICENSE
 %{python_sitelib}/%{name}
 %{python_sitelib}/%{name}-%{version}-py?.?.egg-info
+%{python_sitelib}/twisted/plugins/%{name}_plugin.py
 
 %files -n hacklog
 %defattr(-,root,root)
@@ -120,6 +122,7 @@ rm -rf $RPM_BUILD_ROOT
 %doc $RPM_BUILD_DIR/%{name}-%{version}/%{name}-%{version}/LICENSE
 %{python_sitelib}/%{name}
 %{python_sitelib}/%{name}-%{version}-py?.?.egg-info
+%{python_sitelib}/twisted/plugins/%{name}_plugin.py
 
 # less than RHEL 8 / Fedora 16
 # not sure if RHEL 7 will use systemd yet
